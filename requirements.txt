@@ -1,0 +1,6 @@
+sounddevice
+numpy
+TTS
+openai-whisper
+google-generativeai
+torch  # XTTS 與 Whisper 都依賴它
