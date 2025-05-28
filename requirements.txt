@@ -1,6 +1,6 @@
 sounddevice
 numpy
-TTS
+TTS==0.22.0
 openai-whisper
 google-generativeai
-torch  # XTTS 與 Whisper 都依賴它
+torch==2.1  # XTTS 與 Whisper 都依賴它
