@@ -8,10 +8,13 @@ import torch
 import subprocess
 import sys
 from pathlib import Path
+from TTS.tts.configs.xtts_config import XttsConfig
+from TTS.tts.models.xtts import Xtts
+import scipy.io.wavfile
 
 # ==== 環境初始化 ====
 # 請將此處替換為你的 Google API Key
-GOOGLE_API_KEY = ""
+GOOGLE_API_KEY = "AIzaSyBJKGYccKXuvl0pYeGmDesqejxdb20EFqY"
 os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -168,9 +171,48 @@ def check_xtts_model_exists():
     print("🔍 未發現 XTTS 模型，需要下載")
     return False
 
+def load_xtts_v2_model():
+    """直接載入 XTTS-v2 模型（不透過 TTS API）"""
+    print("🔄 嘗試直接載入 XTTS-v2 模型...")
+    try:
+        # 檢查模型文件是否存在
+        model_dir = Path("XTTS-v2")
+        config_path = model_dir / "config.json"
+        
+        if not model_dir.exists() or not config_path.exists():
+            print("⚠️ 找不到 XTTS-v2 模型文件，將使用 TTS API 載入")
+            return None
+            
+        # 載入模型配置
+        config = XttsConfig()
+        config.load_json(str(config_path))
+        
+        # 初始化並載入模型
+        model = Xtts.init_from_config(config)
+        model.load_checkpoint(config, checkpoint_dir=str(model_dir), eval=True)
+        
+        # 嘗試使用 GPU 加速（如果可用）
+        if torch.cuda.is_available():
+            model.cuda()
+            print("✅ 使用 GPU 加速 XTTS-v2 模型")
+        else:
+            print("✅ 使用 CPU 運行 XTTS-v2 模型")
+            
+        print("✅ XTTS-v2 模型直接載入成功")
+        return model, config
+    except Exception as e:
+        print(f"⚠️ 直接載入 XTTS-v2 模型失敗: {e}")
+        print("💡 將嘗試使用 TTS API 載入")
+        return None
+
 def download_xtts_model():
-    """修正版的 TTS 模型載入函數"""
+    """載入 XTTS-V2 模型進行語音克隆"""
     print("🔄 載入 TTS 模型...")
+    
+    # 首先嘗試直接載入 XTTS-v2 模型
+    xtts_v2_result = load_xtts_v2_model()
+    if xtts_v2_result is not None:
+        return xtts_v2_result
     
     try:
         from TTS.api import TTS
@@ -180,8 +222,15 @@ def download_xtts_model():
         print(f"🔍 PyTorch 版本: {torch.__version__}")
         print(f"🔍 使用設備: {'cuda' if torch.cuda.is_available() else 'cpu'}")
         
-        # 修正：改用正確的方式取得模型列表
-        print("🔍 查詢可用的 TTS 模型...")
+        # 首先嘗試載入 XTTS-V2 模型（支持語音克隆）
+        try:
+            print("🔍 嘗試載入 XTTS-V2 模型（支持語音克隆）...")
+            tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+            print("✅ 成功載入 XTTS-V2 模型")
+            return tts
+        except Exception as e:
+            print(f"⚠️ 載入 XTTS-V2 模型失敗: {str(e)[:100]}...")
+            print("💡 將嘗試其他模型...")
         
         # 嘗試使用預定義的穩定模型（避免查詢所有模型）
         stable_models = [
@@ -194,12 +243,13 @@ def download_xtts_model():
         
         print("🔍 嘗試載入穩定的 TTS 模型...")
         
-        # 首先嘗試載入常見的穩定模型
+        # 如果 XTTS-V2 失敗，嘗試載入其他模型
         for model_name in stable_models:
             print(f"🔍 嘗試載入: {model_name}")
             try:
                 tts = TTS(model_name=model_name)
                 print(f"✅ 成功載入模型: {model_name}")
+                print("⚠️ 注意：此模型不支持語音克隆功能")
                 return tts
             except Exception as e:
                 print(f"⚠️ 載入 {model_name} 失敗: {str(e)[:100]}...")
@@ -213,6 +263,7 @@ def download_xtts_model():
             print("🔍 嘗試載入默認英文模型...")
             tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
             print("✅ 成功載入默認英文模型")
+            print("⚠️ 注意：此模型不支持語音克隆功能")
             return tts
         except Exception as e:
             print(f"⚠️ 默認英文模型載入失敗: {str(e)[:100]}...")
@@ -223,19 +274,10 @@ def download_xtts_model():
             # 不指定模型，讓 TTS 自動選擇
             tts = TTS()
             print("✅ 使用自動選擇的 TTS 模型")
+            print("⚠️ 注意：此模型可能不支持語音克隆功能")
             return tts
         except Exception as e:
             print(f"⚠️ 自動 TTS 模型載入失敗: {str(e)[:100]}...")
-        
-        # 方法3：嘗試指定設備
-        try:
-            print("🔍 嘗試指定設備載入 TTS...")
-            device = "cpu"  # M4 使用 CPU
-            tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC").to(device)
-            print(f"✅ 成功載入 TTS 模型並設定到 {device}")
-            return tts
-        except Exception as e:
-            print(f"⚠️ 指定設備載入失敗: {str(e)[:100]}...")
         
         # 如果所有方法都失敗
         raise Exception("所有 TTS 模型載入方法都失敗")
@@ -325,8 +367,8 @@ def translate_text_with_gemini(text, target_language=LANG_TRANSLATE):
         print(f"❌ 翻譯失敗: {e}")
         return text
 
-def speak_text(text, tts_model, lang=LANG_TTS, output_file="output.wav"):
-    """修正版的文字轉語音函數"""
+def speak_text(text, tts_model, lang=LANG_TTS, output_file="output.wav", use_voice_clone=True):
+    """支持語音克隆的文字轉語音函數"""
     try:
         if not text.strip():
             print("⚠️ 沒有文字可以轉換為語音")
@@ -335,60 +377,172 @@ def speak_text(text, tts_model, lang=LANG_TTS, output_file="output.wav"):
         print("🗣️ 語音合成中...")
         output_path = OUTPUT_DIR / output_file
         
+        # 檢查是否為直接加載的 XTTS-v2 模型
+        is_direct_xtts_v2 = isinstance(tts_model, tuple) and isinstance(tts_model[0], Xtts)
+        
+        if is_direct_xtts_v2:
+            model, config = tts_model
+            ref_audio_path = OUTPUT_DIR / SPEAKER_WAV
+            
+            if use_voice_clone and ref_audio_path.exists():
+                try:
+                    print(f"🎤 使用 XTTS-v2 進行語音克隆（參考音頻: {ref_audio_path}）")
+                    outputs = model.synthesize(
+                        text=text,
+                        config=config,
+                        speaker_wav=str(ref_audio_path),
+                        language=lang,
+                        gpt_cond_len=3,
+                    )
+                    # 保存合成的音頻
+                    scipy.io.wavfile.write(str(output_path), rate=24000, data=outputs["wav"])
+                    print("✅ XTTS-v2 語音克隆成功")
+                    # 在 macOS 上播放音訊
+                    play_audio(str(output_path))
+                    return
+                except AttributeError as e:
+                    if "'GPT2InferenceModel' object has no attribute 'generate'" in str(e):
+                        print("⚠️ transformers 庫版本過高，請降級到 4.49.0 版本")
+                        print("請運行: pip install transformers==4.49.0")
+                    else:
+                        print(f"⚠️ XTTS-v2 語音克隆失敗: {e}")
+                    print("💡 將嘗試使用 TTS API 方法...")
+                except Exception as e:
+                    print(f"⚠️ XTTS-v2 語音克隆失敗: {e}")
+                    print("💡 將嘗試使用 TTS API 方法...")
+            else:
+                print("⚠️ 找不到參考音頻或未請求語音克隆，將使用 TTS API 方法")
+        
+        # 如果直接 XTTS-v2 方法失敗或不適用，使用 TTS API 方法
+        if is_direct_xtts_v2 or not hasattr(tts_model, 'tts_to_file'):
+            # 如果是直接加載的 XTTS-v2 模型但失敗了，或者不是 TTS API 模型
+            # 嘗試載入標準 TTS API 模型
+            try:
+                print("🔄 嘗試使用 TTS API 模型...")
+                from TTS.api import TTS
+                api_tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2")
+                tts_model = api_tts
+                print("✅ 成功載入 TTS API 模型")
+            except Exception as e:
+                print(f"❌ 無法載入 TTS API 模型: {e}")
+                return
+        
         # 修正版的 TTS 調用
         print(f"🔊 目標語言: {lang}")
         
+        # 檢查模型類型和參考音頻
+        ref_audio_path = OUTPUT_DIR / SPEAKER_WAV
+        model_name = ""
+        if hasattr(tts_model, 'model_name'):
+            model_name = tts_model.model_name
+        
+        # 檢查是否為 XTTS 模型（支持語音克隆）
+        is_xtts = "xtts" in model_name.lower() if model_name else False
+        
+        # 取得模型的說話者列表（如果有）
+        available_speakers = []
+        default_speaker = None
+        
+        if hasattr(tts_model, 'speakers') and tts_model.speakers:
+            available_speakers = tts_model.speakers
+            if available_speakers:
+                default_speaker = available_speakers[0]
+                print(f"🎤 可用說話者: {default_speaker}")
+        
+        # 嘗試使用語音克隆（如果模型支持且參考音頻存在）
+        if use_voice_clone and ref_audio_path.exists() and is_xtts:
+            try:
+                print(f"🎤 嘗試使用語音克隆（參考音頻: {ref_audio_path}）")
+                tts_model.tts_to_file(
+                    text=text,
+                    file_path=str(output_path),
+                    speaker_wav=str(ref_audio_path),
+                    language=lang
+                )
+                print("✅ 語音克隆成功")
+                # 在 macOS 上播放音訊
+                play_audio(str(output_path))
+                return
+            except Exception as e:
+                print(f"⚠️ 語音克隆失敗: {str(e)[:100]}...")
+                print("💡 將嘗試其他方法...")
+        elif use_voice_clone and ref_audio_path.exists() and not is_xtts:
+            print("⚠️ 當前模型不支持語音克隆，將使用標準語音合成")
+        
+        # 如果語音克隆失敗或不適用，使用標準方法
         success = False
         error_messages = []
         
-        # 方法1: 最簡單的調用（對大多數模型有效）
-        try:
-            tts_model.tts_to_file(text=text, file_path=str(output_path))
-            success = True
-            print("✅ 語音合成成功")
-        except Exception as e:
-            error_messages.append(f"基本 API 失敗: {str(e)[:100]}")
+        # 方法1: 使用默認說話者（對多說話者模型）
+        if default_speaker:
+            try:
+                print(f"🎤 使用默認說話者: {default_speaker}")
+                tts_model.tts_to_file(
+                    text=text, 
+                    file_path=str(output_path),
+                    speaker=default_speaker
+                )
+                success = True
+                print("✅ 語音合成成功")
+            except Exception as e:
+                error_messages.append(f"默認說話者 API 失敗: {str(e)[:100]}")
         
-        # 方法2: 嘗試指定語言（如果模型支持）
+        # 方法2: 基本調用（嘗試修復多說話者模型問題）
+        if not success:
+            try:
+                if is_xtts and available_speakers:
+                    # XTTS 模型需要說話者參數
+                    tts_model.tts_to_file(
+                        text=text, 
+                        file_path=str(output_path),
+                        speaker=available_speakers[0]
+                    )
+                else:
+                    # 一般模型
+                    tts_model.tts_to_file(text=text, file_path=str(output_path))
+                success = True
+                print("✅ 語音合成成功")
+            except Exception as e:
+                error_messages.append(f"基本 API 失敗: {str(e)[:100]}")
+        
+        # 方法3: 嘗試指定語言（如果模型支持）
         if not success:
             try:
                 if hasattr(tts_model, 'languages') and lang in tts_model.languages:
-                    tts_model.tts_to_file(
-                        text=text,
-                        file_path=str(output_path),
-                        language=lang
-                    )
+                    if is_xtts and available_speakers:
+                        # XTTS 模型需要說話者參數
+                        tts_model.tts_to_file(
+                            text=text,
+                            file_path=str(output_path),
+                            language=lang,
+                            speaker=available_speakers[0]
+                        )
+                    else:
+                        tts_model.tts_to_file(
+                            text=text,
+                            file_path=str(output_path),
+                            language=lang
+                        )
                     success = True
                     print("✅ 使用指定語言成功")
             except Exception as e:
                 error_messages.append(f"指定語言 API 失敗: {str(e)[:100]}")
         
-        # 方法3: 嘗試使用說話者（多說話者模型）
-        if not success:
-            try:
-                # 安全地檢查說話者
-                speakers = None
-                if hasattr(tts_model, 'speakers') and tts_model.speakers:
-                    speakers = tts_model.speakers
-                elif hasattr(tts_model, 'synthesizer') and hasattr(tts_model.synthesizer, 'tts_speakers_file'):
-                    # 嘗試獲取說話者列表
-                    try:
-                        speakers = list(tts_model.synthesizer.tts_config.speakers)
-                    except:
-                        pass
-                
-                if speakers and len(speakers) > 0:
-                    speaker = speakers[0] if isinstance(speakers, list) else str(speakers[0])
-                    print(f"🎤 使用說話者: {speaker}")
+        # 方法4: 嘗試使用所有可用的說話者（多說話者模型）
+        if not success and available_speakers:
+            for speaker in available_speakers:
+                try:
+                    print(f"🎤 嘗試說話者: {speaker}")
                     tts_model.tts_to_file(
                         text=text,
                         file_path=str(output_path),
                         speaker=speaker
                     )
                     success = True
-                    print("✅ 使用說話者參數成功")
-            except Exception as e:
-                error_messages.append(f"說話者 API 失敗: {str(e)[:100]}")
+                    print(f"✅ 使用說話者 {speaker} 成功")
+                    break
+                except Exception as e:
+                    error_messages.append(f"說話者 {speaker} 失敗: {str(e)[:100]}")
         
         if not success:
             raise Exception(f"所有語音合成方法都失敗: {'; '.join(error_messages)}")
@@ -406,6 +560,7 @@ def speak_text(text, tts_model, lang=LANG_TTS, output_file="output.wav"):
         print("   1. 檢查模型是否正確載入")
         print("   2. 嘗試較短的文字")
         print("   3. 更新 TTS 庫: pip install -U TTS")
+        print("   4. 確保參考音頻品質良好")
 
 def play_audio(file_path):
     """播放音訊檔案"""
@@ -494,6 +649,24 @@ def main_loop():
     # 顯示音訊設備
     get_audio_devices()
     
+    # 檢查是否為 XTTS 模型
+    is_xtts = False
+    is_direct_xtts_v2 = isinstance(tts_model, tuple) and isinstance(tts_model[0], Xtts)
+    
+    if is_direct_xtts_v2:
+        is_xtts = True
+        print("✨ 當前使用直接載入的 XTTS-V2 模型，支持語音克隆功能！")
+    else:
+        model_name = ""
+        if hasattr(tts_model, 'model_name'):
+            model_name = tts_model.model_name
+        is_xtts = "xtts" in model_name.lower() if model_name else False
+        
+        if is_xtts:
+            print("✨ 當前使用 XTTS-V2 模型，支持語音克隆功能！")
+        else:
+            print("⚠️ 當前模型不支持語音克隆功能")
+    
     print("\n🎯 語音翻譯程式已準備就緒！")
     print("📝 使用說明：")
     print("  - 按 Enter 開始錄音（5秒）")
@@ -501,6 +674,7 @@ def main_loop():
     print("  - 輸入 'q' 退出程式")
     print("  - 輸入 'test' 測試語音合成")
     print("  - 輸入 'voice' 錄製並保存參考音頻樣本")
+    print("  - 輸入 'clone' 啟用完整的語音翻譯與克隆流程")
     
     while True:
         try:
@@ -527,6 +701,44 @@ def main_loop():
                 print(f"✅ 參考音頻已保存至: {ref_path}")
                 print("📝 下次語音合成將使用您的聲音特徵")
                 continue
+            elif user_input.lower() == 'clone':
+                # 完整的語音翻譯與克隆流程
+                print("🔄 啟動完整語音翻譯與克隆流程...")
+                
+                # 檢查參考音頻是否存在
+                ref_audio_path = OUTPUT_DIR / SPEAKER_WAV
+                if not ref_audio_path.exists():
+                    print("⚠️ 未找到參考音頻，請先使用 'voice' 命令錄製")
+                    continue
+                
+                # 錄音
+                print("🎙️ 請說話（錄音5秒）...")
+                audio = record_audio(duration=5)
+                if audio is None:
+                    continue
+                
+                # 語音辨識
+                print("🔍 正在辨識語音...")
+                text = transcribe_audio(audio, asr_model)
+                if not text.strip():
+                    print("⚠️ 沒有辨識到語音內容")
+                    continue
+                
+                print(f"📄 辨識結果: {text}")
+                
+                # 翻譯
+                print("🌐 正在翻譯...")
+                translated = translate_text_with_gemini(text)
+                if not translated:
+                    print("⚠️ 翻譯失敗")
+                    continue
+                
+                print(f"🌍 翻譯結果: {translated}")
+                
+                # 語音克隆合成
+                print("🎤 使用語音克隆進行合成...")
+                speak_text(translated, tts_model, use_voice_clone=True)
+                continue
             elif user_input.isdigit():
                 duration = int(user_input)
                 if duration > 30:
@@ -535,6 +747,7 @@ def main_loop():
             else:
                 duration = DEFAULT_DURATION
             
+            # 標準流程：錄音->辨識->翻譯->合成（無克隆）
             # 錄音
             audio = record_audio(duration=duration)
             if audio is None:
@@ -553,8 +766,8 @@ def main_loop():
             if translated:
                 print(f"🌍 翻譯結果: {translated}")
                 
-                # 語音合成
-                speak_text(translated, tts_model)
+                # 語音合成（默認不使用克隆）
+                speak_text(translated, tts_model, use_voice_clone=False)
             else:
                 print("⚠️ 翻譯失敗")
                 
@@ -566,16 +779,18 @@ def main_loop():
 
 # ==== 執行程式 ====
 if __name__ == "__main__":
-    print("🚀 MacBook M4 語音翻譯程式 (修正版)")
+    print("🚀 MacBook M4 語音翻譯程式（XTTS-V2 克隆版）")
     print("=" * 50)
     print("📋 程式功能：")
     print("  • 中文語音辨識 → 英文翻譯 → 英文語音")
-    print("  • 支援自訂語音合成聲音 (輸入 'voice' 錄製參考音頻)")
-    print("  • 使用本地 TTS 模型")
+    print("  • 支援語音克隆功能 (輸入 'voice' 錄製參考音頻)")
+    print("  • 使用 XTTS-V2 模型（如可用）")
     print("  • 針對 M4 晶片優化")
     print("⚠️ 安裝提醒：")
     print("  • 請確保已安裝 ffmpeg：brew install ffmpeg")
     print("  • 請安裝所需套件：pip install soundfile TTS openai-whisper sounddevice google-generativeai")
+    print("  • 推薦使用最新版 TTS：pip install -U TTS")
+    print("  • 如果使用直接載入的 XTTS-v2，請安裝 transformers==4.49.0：pip install transformers==4.49.0")
     print("  • 如遇到問題，請重新安裝 whisper：")
     print("    pip uninstall openai-whisper")
     print("    pip install git+https://github.com/openai/whisper.git")
