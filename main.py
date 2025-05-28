@@ -14,7 +14,7 @@ import scipy.io.wavfile
 
 # ==== 環境初始化 ====
 # 請將此處替換為你的 Google API Key
-GOOGLE_API_KEY = "AIzaSyBJKGYccKXuvl0pYeGmDesqejxdb20EFqY"
+GOOGLE_API_KEY = "XXXXXXX"
 os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
 genai.configure(api_key=GOOGLE_API_KEY)
 
