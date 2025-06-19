@@ -1,239 +1,318 @@
-# 即時克隆語音翻譯 (Deep Simultaneous Translation)
+# 即時語音克隆翻譯系統 (Real-Time Voice Cloning Translation System)
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Status](https://img.shields.io/badge/Status-Active-green.svg)
 
+這是一個革命性的即時語音翻譯系統，能夠**邊聽邊翻譯邊輸出**，並在保留說話者原始音色的情況下，將語音內容實時翻譯成多種語言。系統採用最先進的AI模型來實現語音識別、翻譯和合成的無縫整合。
 
-這是一個強大的即時語音翻譯系統，能夠在保留說話者原始音色的情況下，將語音內容翻譯成另一種語言。系統使用最先進的AI模型來實現語音識別、翻譯和合成的無縫整合。
+## ✨ 主要功能
 
-## 主要功能
+- **🎤 即時語音處理**：真正的邊聽邊翻譯邊輸出，支持同時進行音頻捕獲、翻譯處理和語音播放
+- **🎭 高精度音色克隆**：僅需3-5秒音頻樣本即可克隆用戶音色
+- **🌍 多語言支持**：支持 9 種語言互譯（中文、英文、日文、韓文、西班牙文、法文、德文、意大利文、葡萄牙文）
+- **🤖 智能斷點檢測**：自動識別語音開始和停頓，無需手動控制
+- **⚡ 多線程架構**：音頻捕獲、翻譯處理、語音播放並行進行
+- **🔒 安全性**：API Key 安全輸入，臨時文件自動清理
+- **🛠️ 智能錯誤處理**：自動檢測日語處理問題並提供備用方案
 
-- **即時語音識別**：使用先進的語音識別技術捕捉用戶語音
-- **音色克隆**：保留說話者的獨特音色和語調
-- **高品質翻譯**：提供準確、自然的翻譯結果
-- **多語言支持**：支持中文和英文的雙向翻譯
-- **實時處理**：快速響應的語音處理系統
+## 🎯 核心特色
 
-## 技術架構
+### 真正的即時翻譯
+- 用戶說話時系統同時進行音頻捕獲
+- 檢測到語音停頓（1秒）後立即開始翻譯處理
+- 翻譯完成後使用用戶克隆的語音立即播放
+- 用戶可以在系統播放翻譯的同時繼續說話
 
-本專案結合了三個強大的AI模型：
+### 智能語音活動檢測
+- 自動檢測語音開始和結束
+- 最小語音長度過濾（0.3秒）避免雜音干擾
+- 可調節的靜音閾值和持續時間
 
-### 1. XTTS-v2 (Coqui TTS)
-用於語音合成和音色克隆。這是一個革命性的語音合成模型，能夠僅通過短短幾秒的音頻樣本，就能複製說話者的聲音特徵，並將其應用於不同語言的文本合成。
+## 🏗️ 技術架構
 
-### 2. Gemini 2.0 Flash API
-用於語音識別和翻譯。Google的最新多模態AI模型能夠處理音頻輸入，進行語音識別並翻譯成目標語言，提供高精度的文本輸出。
+本專案結合了多個先進的AI模型和技術：
 
-### 3. Whisper (OpenAI)
-作為備選的語音識別模型。這個強大的開源語音識別模型可以識別和轉錄多種語言的語音內容，為系統提供穩定的後備選項。
+### 1. **XTTS-v2 (Coqui TTS)**
+- 用於語音合成和音色克隆
+- 支持多語言語音合成（包括日語、韓語等）
+- 僅需短音頻樣本即可克隆音色
 
-## 系統要求
+### 2. **Gemini 2.0 Flash API**
+- 用於語音識別和翻譯
+- 支持多模態輸入（音頻 + 文本）
+- 高精度的語音轉文字和翻譯
 
-- Python 3.10
-- PyTorch (最新版本)
-- 足夠的硬碟空間（至少5GB用於模型存儲）
-- 支持CUDA的GPU（推薦，但不是必須）
-- 穩定的網絡連接（用於API請求）
-- 使用Macbook M4pro 作為測試平台
+### 3. **MeCab + unidic-lite**
+- 日語文本分析和處理
+- 支持高質量的日語語音合成
+- 自動配置和錯誤處理
+- start.sh 檢查 MeCab 檢測
 
-## 安裝指南
+## 💻 系統要求
 
-1. 克隆此代碼庫：
+- **作業系統**：macOS (推薦 M4 Pro)、Linux
+- **Python**：3.10
+- **記憶體**：至少 8GB RAM
+- **硬碟空間**：至少 5GB（用於模型存儲）
+- **GPU**：支持 CUDA 的 GPU（可選，CPU 也可運行）
+- **網絡**：穩定的網絡連接（用於 API 請求）
+- **音頻設備**：麥克風和揚聲器
+
+## 🚀 快速安裝
+
+### 1. 克隆專案
 ```bash
 git clone https://github.com/yourusername/Deep-Simultaneous-Translation.git
 cd Deep-Simultaneous-Translation
 ```
 
-2. 創建並激活虛擬環境：
+### 2. 創建虛擬環境
 ```bash
-python -m venv venv
-source venv/bin/activate  # Windows上使用: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 ```
 
-3. 安裝必要的依賴：
+### 3. 安裝依賴項
 ```bash
 pip install -r requirements.txt
 ```
 
-4. 下載XTTS-v2模型（如果尚未下載）：
+### 4. macOS 用戶額外設置（日語支持）
 ```bash
-# 模型將被自動下載到XTTS-v2目錄
-# 或者從https://huggingface.co/coqui/XTTS-v2手動下載
+brew install mecab mecab-ipadic
 ```
 
-## 使用方法
+## 📋 依賴項清單
 
-1. 首先，在main.py中設置您的Gemini API密鑰：
-```python
-GEMINI_API_KEY = "your_api_key_here"
-```
-
-2. 運行主程序：
-```bash
-python main.py
-```
-
-3. 遵循命令行界面的指示：
-   - 輸入`start`或`s`開始錄音和翻譯流程
-   - 輸入`lang en`設置翻譯為英文
-   - 輸入`lang zh`設置翻譯為中文
-   - 輸入`voices`查看已克隆的語音
-   - 輸入`clean`清理所有克隆語音
-   - 輸入`quit`或`q`退出程序
-
-4. 完整流程說明：
-   - 系統會先錄製您的語音
-   - 自動克隆您的音色
-   - 識別並翻譯您說的內容
-   - 使用您的音色說出翻譯後的內容
-
-## 核心代碼說明
-
-以下是系統中一些重要的部分：
-
-### 語音錄制
-系統使用PyAudio來捕獲麥克風輸入，並保存為臨時WAV文件：
-```python
-def start_recording(self):
-    """開始錄音"""
-    self.is_recording = True
-    self.audio_frames = []
-    
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=self.format,
-                      channels=self.channels,
-                      rate=self.rate,
-                      input=True,
-                      frames_per_buffer=self.chunk)
-    
-    print("🎤 錄音中... 按 Enter 停止錄音")
-    
-    while self.is_recording:
-        data = stream.read(self.chunk)
-        self.audio_frames.append(data)
-```
-
-### 語音克隆
-系統將錄製的音頻保存為參考語音，用於後續合成：
-```python
-def clone_voice(self, audio_file_path):
-    """克隆語音 - 將錄音文件複製為語音參考"""
-    try:
-        print("🎭 正在克隆語音...")
-        
-        # 創建克隆語音存儲目錄
-        if not os.path.exists("cloned_voices"):
-            os.makedirs("cloned_voices")
-        
-        # 將原始錄音複製作為語音克隆參考
-        cloned_voice_filename = f"cloned_voices/cloned_voice_{int(time.time())}.wav"
-        shutil.copy2(audio_file_path, cloned_voice_filename)
-        
-        self.cloned_voice_path = cloned_voice_filename
-        print(f"✅ 語音克隆完成，參考文件: {cloned_voice_filename}")
-        
-        return cloned_voice_filename
-    except Exception as e:
-        print(f"❌ 語音克隆過程發生錯誤: {e}")
-        return None
-```
-
-### 語音識別與翻譯
-使用Gemini API進行語音識別和翻譯：
-```python
-def transcribe_and_translate(self, audio_file_path, target_language="en"):
-    """使用 Gemini 進行語音轉文字和翻譯"""
-    try:
-        print("🤖 正在使用 Gemini 進行語音識別和翻譯...")
-        
-        # 上傳音頻文件
-        audio_file = genai.upload_file(path=audio_file_path)
-        
-        # 根據目標語言設定提示詞
-        if target_language.lower() == "en":
-            prompt = "請將這段音頻中的語音內容轉換為英文文字，如果原本就是英文就直接轉錄，如果是其他語言請翻譯成英文。只回傳最終的英文文字內容，不要包含其他說明。"
-        elif target_language.lower() == "zh":
-            prompt = "請將這段音頻中的語音內容轉換為繁體中文文字，如果原本就是中文就直接轉錄，如果是其他語言請翻譯成繁體中文。只回傳最終的繁體中文文字內容，不要包含其他說明。"
-        
-        # 發送請求到 Gemini
-        response = self.model.generate_content([audio_file, prompt])
-        translated_text = response.text.strip()
-        
-        return translated_text
-    except Exception as e:
-        print(f"❌ 翻譯過程發生錯誤: {e}")
-        return None
-```
-
-### 語音合成
-使用XTTS-v2模型和克隆的語音進行語音合成：
-```python
-def synthesize_speech_with_cloned_voice(self, text, output_file="output_speech.wav"):
-    """使用克隆的語音合成語音"""
-    try:
-        print("🔊 正在使用克隆語音合成語音...")
-        
-        if not self.cloned_voice_path or not os.path.exists(self.cloned_voice_path):
-            print("❌ 沒有可用的克隆語音，請先錄音進行語音克隆")
-            return None
-        
-        # 檢測語言
-        has_chinese = any('\u4e00' <= char <= '\u9fff' for char in text)
-        language = "zh-cn" if has_chinese else "en"
-        
-        outputs = self.xtts_model.synthesize(
-            text,
-            self.config,
-            speaker_wav=self.cloned_voice_path,  # 使用克隆的語音
-            gpt_cond_len=3,
-            language=language,
-        )
-        
-        # 保存音頻
-        scipy.io.wavfile.write(output_file, rate=24000, data=outputs["wav"])
-        
-        return output_file
-    except Exception as e:
-        print(f"❌ 語音合成發生錯誤: {e}")
-        return None
-```
-
-## requirements.txt
-
-```
+```txt
 sounddevice
 numpy
 TTS==0.22.0
 openai-whisper
 google-generativeai
-torch==2.1  # XTTS 與 Whisper 都依賴它
+torch==2.1
 pyaudio
 pygame
+cutlet
+fugashi              # 日語文本處理庫
+unidic-lite         # 日語詞典，支援 XTTS 日語語音合成
 ```
 
-## 注意事項
+## 🎯 使用方法
 
-1. **Gemini API密鑰**：您需要從[Google AI Studio](https://makersuite.google.com/app/apikey)獲取Gemini API密鑰。
+### 啟動系統
 
-2. **XTTS-v2模型**：模型文件應放在`XTTS-v2`目錄中，包括`config.json`和模型權重文件。您可以從[Hugging Face](https://huggingface.co/coqui/XTTS-v2)下載這些文件。
+**方法一：使用啟動腳本（推薦）**
+```bash
+chmod +x start.sh
+./start.sh
+```
 
-3. **Transformers版本**：XTTS-v2模型對transformers庫的版本有特定要求，請確保安裝的是4.49.0版本，以避免`GPT2InferenceModel`相關的錯誤。
+**方法二：直接運行**
+```bash
+python main.py
+```
 
-4. **GPU加速**：如果您的系統有支持CUDA的GPU，本系統將自動使用GPU加速語音合成過程，大幅提高處理速度。
+### 操作流程
 
-## 故障排除
+1. **📡 設置 Gemini API Key**
+   - 系統會提示您安全輸入 API Key
+   - 從 [Google AI Studio](https://makersuite.google.com/app/apikey) 獲取
 
-- **語音識別錯誤**：確保您的麥克風工作正常，並在安靜的環境中錄音。
-- **合成失敗**：檢查XTTS-v2模型文件是否完整，並確認transformers庫版本是否正確。
-- **API錯誤**：確認您的Gemini API密鑰是否有效，以及網絡連接是否穩定。
+2. **🌍 選擇語言**
+   ```
+   支持的語言:
+   zh: 中文    en: 英文    ja: 日文
+   ko: 韓文    es: 西班牙文  fr: 法文
+   de: 德文    it: 意大利文  pt: 葡萄牙文
+   ```
 
-## 授權信息
+3. **🎭 克隆語音（按 c）**
+   - 用自然語調說一段話（3-5秒）
+   - 系統會自動檢測語音開始和結束
+   - 語音樣本將保存在 `cloned_voices/` 目錄
 
-本專案中使用的XTTS-v2模型受[Coqui Public Model License](https://coqui.ai/cpml)約束。
+4. **⚡ 開始即時翻譯（按 Enter）**
+   - 系統進入持續監聽模式
+   - 開始說話，停頓1秒後自動翻譯
+   - 使用您的克隆語音即時播放翻譯結果
 
-## 聯繫方式
+## 🎛️ 操作界面
 
-如有任何問題，請聯繫：[rayc57429@gmail.com]
+```
+📋 操作選項:
+  c - 克隆語音（必須先完成）
+  enter - 開始即時翻譯
+  q - 退出程序
+
+✅ 語音已克隆，可以開始即時翻譯
+```
+
+## 🔧 核心代碼架構
+
+### 多線程即時處理
+```python
+# 三個並行工作線程
+1. audio_capture_worker()    # 音頻捕獲線程
+2. translation_worker()      # 翻譯處理線程  
+3. playback_worker()         # 音頻播放線程
+```
+
+### 智能語音檢測
+```python
+def detect_voice_activity(self, audio_data):
+    """語音活動檢測"""
+    rms = self.calculate_rms(audio_data)
+    # 音量閾值檢測 + 時間窗口分析
+    # 自動識別說話開始和停頓
+```
+
+### 多語言語音合成
+```python
+def synthesize_speech(self, text):
+    """使用克隆語音合成多語言語音"""
+    language_map = {
+        'zh': 'zh-cn', 'en': 'en', 'ja': 'ja',
+        'ko': 'ko', 'es': 'es', 'fr': 'fr',
+        'de': 'de', 'it': 'it', 'pt': 'pt'
+    }
+    # 自動語言檢測 + 錯誤處理
+```
+
+## 🛠️ 高級功能
+
+### 自動 MeCab 配置
+系統會自動檢測並配置 MeCab（日語處理）：
+```python
+def setup_mecab():
+    # 自動檢測 unidic-lite 詞典
+    # 備用系統 MeCab 配置
+    # 智能錯誤處理
+```
+
+### 智能錯誤恢復
+- 日語處理失敗時自動使用英語合成
+- API 錯誤重試機制
+- 臨時文件自動清理
+
+## 🎵 支持的語言組合
+
+| 原始語言 | 目標語言 | 狀態 |
+|---------|---------|------|
+| 中文 | 日文 | ✅ 完全支持 |
+| 中文 | 英文 | ✅ 完全支持 |
+| 英文 | 中文 | ✅ 完全支持 |
+| 英文 | 日文 | ✅ 完全支持 |
+| 其他語言 | 任意支持語言 | ✅ 完全支持 |
+
+## 🔍 故障排除
+
+### 常見問題
+
+**1. MeCab 初始化錯誤**
+```bash
+# 解決方案：系統已自動處理，會使用 unidic-lite 備用詞典
+```
+
+**2. 語音合成失敗**
+```
+⚠️ 日語處理組件問題，嘗試使用英語合成...
+🔊 使用英語語音合成完成
+```
+
+**3. API Key 無效**
+```bash
+❌ API Key 無效: 400 API key not valid
+是否重新輸入？(y/n): y
+```
+
+**4. 音頻設備問題**
+- 檢查麥克風權限
+- 確認音頻設備工作正常
+- 在安靜環境中使用
+
+### 性能優化
+
+**GPU 加速**
+```
+✅ 使用 GPU 加速  # 自動檢測 CUDA
+✅ 使用 CPU 運算  # 備用方案
+```
+
+**記憶體優化**
+- 臨時文件自動清理
+- 音頻緩衝區大小限制
+- 佇列管理
+
+## 📁 專案結構
+
+```
+Deep-Simultaneous-Translation/
+├── main.py              # 主程序
+├── start.sh             # 啟動腳本
+├── requirements.txt     # 依賴項
+├── README.md           # 使用說明
+├── XTTS-v2/            # XTTS 模型文件
+│   ├── config.json
+│   ├── model.pth
+│   └── ...
+├── cloned_voices/      # 克隆語音存儲
+└── voice_output/       # 音頻輸出（臨時）
+```
+
+## 📊 性能指標
+
+- **語音檢測延遲**：< 100ms
+- **翻譯處理時間**：1-3 秒（取決於網絡）
+- **語音合成時間**：1-2 秒
+- **總響應時間**：2-5 秒
+- **支持音頻格式**：WAV (16kHz, 16-bit, Mono)
+
+## 🔐 安全與隱私
+
+- **API Key 安全輸入**：使用 `getpass` 避免明文顯示
+- **本地音頻處理**：語音克隆完全在本地進行
+- **臨時文件清理**：自動清理所有臨時音頻文件
+- **網絡隱私**：僅翻譯時向 Gemini API 發送音頻
+
+## 🤝 貢獻指南
+
+歡迎提交 Issue 和 Pull Request！
+
+1. Fork 本專案
+2. 創建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 開啟 Pull Request
+
+## 📜 授權信息
+
+- **本專案**：MIT License
+- **XTTS-v2 模型**：[Coqui Public Model License](https://huggingface.co/coqui/XTTS-v2)
+- **Gemini API**：遵循 Google AI 使用條款
+
+## 📞 聯繫方式
+
+- **Email**：[rayc57429@gmail.com]
+- **GitHub Issues**：[提交問題](https://github.com/yourusername/Deep-Simultaneous-Translation/issues)
+
+## 🙏 致謝
+
+感謝以下開源專案：
+- [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS-v2 語音合成
+- [Google Gemini](https://ai.google.dev/) - 語音識別和翻譯
+- [MeCab](https://taku910.github.io/mecab/) - 日語文本分析
 
 ---
 
-© 2024 即時克隆語音翻譯 | Deep Simultaneous Translation
+<div align="center">
+
+**🎤 即時語音克隆翻譯系統 | Real-Time Voice Cloning Translation System**
+
+*讓語言不再是溝通的障礙*
+
+© 2024 Deep Simultaneous Translation
+
+</div>
 

@@ -17,6 +17,45 @@ import queue
 from collections import deque
 import getpass
 
+# 設置 MeCab 配置路徑以避免日語處理錯誤
+def setup_mecab():
+    """設置 MeCab 配置以支持日語處理"""
+    # 嘗試設置 unidic-lite 詞典
+    try:
+        import unidic_lite
+        # 設置 unidic-lite 詞典路徑
+        dicdir = unidic_lite.dicdir
+        mecabrc_path = os.path.join(dicdir, 'mecabrc')
+        if os.path.exists(mecabrc_path):
+            os.environ['MECABRC'] = mecabrc_path
+            print("✅ 使用 unidic-lite 詞典")
+            return True
+        else:
+            # 嘗試不設置 MECABRC，讓 unidic_lite 自行處理
+            print("✅ unidic-lite 可用，使用預設配置")
+            return True
+    except (ImportError, AttributeError):
+        pass
+    
+    # 備用：嘗試系統安裝的 MeCab
+    possible_paths = [
+        '/opt/homebrew/etc/mecabrc',  # Homebrew Apple Silicon
+        '/usr/local/etc/mecabrc',     # Homebrew Intel
+        '/usr/etc/mecabrc',           # 系統安裝
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            os.environ['MECABRC'] = path
+            print(f"✅ 使用系統 MeCab 配置: {path}")
+            return True
+    
+    print("⚠️ 未找到 MeCab 配置，日語處理可能受限")
+    return False
+
+# 初始化 MeCab 配置
+mecab_available = setup_mecab()
+
 class RealTimeVoiceTranslationSystem:
     def __init__(self):
         # 系統狀態
@@ -260,8 +299,22 @@ class RealTimeVoiceTranslationSystem:
     
     def calculate_rms(self, audio_data):
         """計算音頻RMS值"""
-        audio_np = np.frombuffer(audio_data, dtype=np.int16)
-        return np.sqrt(np.mean(audio_np**2))
+        if not audio_data or len(audio_data) == 0:
+            return 0
+        
+        try:
+            audio_np = np.frombuffer(audio_data, dtype=np.int16)
+            if len(audio_np) == 0:
+                return 0
+            
+            # 計算RMS值，避免數學警告
+            mean_square = np.mean(audio_np.astype(np.float64)**2)
+            if mean_square < 0:
+                return 0
+            
+            return np.sqrt(mean_square)
+        except (ValueError, OverflowError):
+            return 0
     
     def detect_voice_activity(self, audio_data):
         """語音活動檢測"""
@@ -434,6 +487,14 @@ class RealTimeVoiceTranslationSystem:
             
             xtts_language = language_map.get(self.target_language, 'en')
             
+            # 針對日語處理，添加特殊處理
+            if xtts_language == 'ja':
+                print("🇯🇵 正在合成日語語音...")
+                # 檢查是否有可用的日語詞典
+                if not mecab_available:
+                    print("⚠️ 日語詞典不可用，將使用英語合成")
+                    xtts_language = 'en'
+            
             outputs = self.xtts_model.synthesize(
                 text,
                 self.config,
@@ -446,11 +507,33 @@ class RealTimeVoiceTranslationSystem:
             output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
             scipy.io.wavfile.write(output_file.name, rate=24000, data=outputs["wav"])
             
+            language_name = {'zh-cn': '中文', 'en': '英語', 'ja': '日語'}.get(xtts_language, xtts_language)
+            print(f"🔊 {language_name}語音合成完成")
             return output_file.name
             
         except Exception as e:
-            print(f"❌ 語音合成錯誤: {e}")
-            return None
+            error_msg = str(e)
+            if any(keyword in error_msg for keyword in ["MeCab", "fugashi", "dictionary format", "GenericTagger"]):
+                print("⚠️ 日語處理組件問題，嘗試使用英語合成...")
+                try:
+                    # 嘗試用英語合成
+                    outputs = self.xtts_model.synthesize(
+                        text,
+                        self.config,
+                        speaker_wav=self.cloned_voice_path,
+                        gpt_cond_len=3,
+                        language='en',
+                    )
+                    output_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+                    scipy.io.wavfile.write(output_file.name, rate=24000, data=outputs["wav"])
+                    print("🔊 使用英語語音合成完成")
+                    return output_file.name
+                except Exception as fallback_e:
+                    print(f"❌ 備用語音合成也失敗: {fallback_e}")
+                    return None
+            else:
+                print(f"❌ 語音合成錯誤: {e}")
+                return None
     
     def start_real_time_translation(self):
         """開始即時翻譯模式"""
