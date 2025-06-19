@@ -292,7 +292,7 @@ Deep-Simultaneous-Translation/
 
 <div align="center">
 
-**🎤 即時語音克隆翻譯系統 | Real-Time Voice Cloning Translation System**
+**🎤 即時語音克隆翻譯系統 | Deep-Simultaneous-Translation**
 
 *讓語言不再是溝通的障礙*
 
