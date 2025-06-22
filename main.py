@@ -17,13 +17,10 @@ import queue
 from collections import deque
 import getpass
 
-# 設置 MeCab 配置路徑以避免日語處理錯誤
 def setup_mecab():
     """設置 MeCab 配置以支持日語處理"""
-    # 嘗試設置 unidic-lite 詞典
     try:
         import unidic_lite
-        # 設置 unidic-lite 詞典路徑
         dicdir = unidic_lite.dicdir
         mecabrc_path = os.path.join(dicdir, 'mecabrc')
         if os.path.exists(mecabrc_path):
@@ -31,13 +28,10 @@ def setup_mecab():
             print("✅ 使用 unidic-lite 詞典")
             return True
         else:
-            # 嘗試不設置 MECABRC，讓 unidic_lite 自行處理
             print("✅ unidic-lite 可用，使用預設配置")
             return True
     except (ImportError, AttributeError):
         pass
-    
-    # 備用：嘗試系統安裝的 MeCab
     possible_paths = [
         '/opt/homebrew/etc/mecabrc',  # Homebrew Apple Silicon
         '/usr/local/etc/mecabrc',     # Homebrew Intel

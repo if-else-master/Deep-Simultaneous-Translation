@@ -157,6 +157,155 @@ python main.py
 3. playback_worker()         # 音頻播放線程
 ```
 
+## 🎙️ 聲音斷點檢測技術
+
+本系統採用了先進的**語音活動檢測 (Voice Activity Detection, VAD)** 算法來實現自動斷點識別和翻譯觸發。
+
+### 核心技術原理
+
+#### 1. RMS (Root Mean Square) 音量計算
+```python
+def calculate_rms(self, audio_data):
+    """計算音頻RMS值 - 音量強度的數學表示"""
+    audio_np = np.frombuffer(audio_data, dtype=np.int16)
+    mean_square = np.mean(audio_np.astype(np.float64)**2)
+    return np.sqrt(mean_square)
+```
+
+**數學公式：**
+```
+RMS = √(∑(xi²)/N)
+```
+- xi：每個音頻樣本的振幅值
+- N：樣本總數
+- RMS值反映音頻信號的能量強度
+
+#### 2. 語音活動檢測算法
+```python
+def detect_voice_activity(self, audio_data):
+    """智能語音斷點檢測"""
+    rms = self.calculate_rms(audio_data)
+    current_time = time.time()
+    
+    if rms > self.silence_threshold:  # 檢測到語音
+        if not self.is_speech_detected:
+            self.is_speech_detected = True
+            print("🎤 開始說話...")
+        self.last_speech_time = current_time
+        return True
+    else:  # 靜音狀態
+        if self.is_speech_detected:
+            silence_duration = current_time - self.last_speech_time
+            if silence_duration >= self.silence_duration:
+                self.is_speech_detected = False
+                print("⏸️ 檢測到停頓，處理語音...")
+                return False
+        return self.is_speech_detected
+```
+
+#### 3. 關鍵參數配置
+```python
+# 音頻參數
+self.chunk = 1024              # 音頻塊大小 (樣本數)
+self.rate = 16000              # 採樣率 16kHz
+self.silence_threshold = 500   # 靜音閾值 (RMS值)
+self.silence_duration = 1.0    # 靜音持續時間 (秒)
+self.min_speech_duration = 0.3 # 最短語音長度 (秒)
+```
+
+### 技術實現細節
+
+#### 1. 音頻緩衝機制
+```python
+from collections import deque
+self.audio_buffer = deque(maxlen=int(self.rate * 10))  # 10秒環形緩衝
+```
+- 使用 **deque** 數據結構實現環形緩衝區
+- 最大容量：10秒音頻數據
+- 自動覆蓋舊數據，避免記憶體溢出
+
+#### 2. 實時語音分段
+```python
+def audio_capture_worker(self):
+    """音頻捕獲與分段處理"""
+    while self.is_real_time_active:
+        data = stream.read(self.chunk)
+        self.audio_buffer.extend(np.frombuffer(data, dtype=np.int16))
+        
+        is_speech = self.detect_voice_activity(data)
+        
+        if is_speech:
+            # 累積語音段
+            self.current_segment.extend(np.frombuffer(data, dtype=np.int16))
+        elif self.current_segment and len(self.current_segment) > int(self.rate * self.min_speech_duration):
+            # 語音段結束，發送處理
+            segment_audio = np.array(self.current_segment, dtype=np.int16)
+            self.audio_segments_queue.put(segment_audio)
+            self.current_segment = []
+```
+
+#### 3. 斷點檢測流程圖
+
+```
+音頻輸入 → RMS計算 → 閾值比較 → 狀態判斷 → 動作觸發
+   ↓           ↓         ↓         ↓         ↓
+16kHz      數學運算    >500?    語音/靜音    翻譯/等待
+採樣率      √(∑x²/N)   判斷     狀態機     處理
+```
+
+### 使用的函式庫
+
+#### 音頻處理
+- **PyAudio**：音頻設備介面，實時音頻捕獲
+- **NumPy**：高效數值計算，音頻數據處理
+- **SciPy**：音頻文件讀寫，格式轉換
+
+#### 數據結構
+- **collections.deque**：環形緩衝區實現
+- **queue.Queue**：線程間通信
+- **threading**：多線程並行處理
+
+#### 數學運算
+```python
+import numpy as np
+
+# RMS計算
+rms = np.sqrt(np.mean(audio_array**2))
+
+# 音頻數據轉換
+audio_np = np.frombuffer(raw_audio, dtype=np.int16)
+```
+
+### 智能優化特性
+
+#### 1. 防雜音干擾
+- **最小語音長度過濾**：僅處理超過0.3秒的語音段
+- **RMS閾值調節**：動態適應環境噪音
+- **連續性檢測**：避免短暫雜音觸發翻譯
+
+#### 2. 響應速度優化
+- **1秒停頓檢測**：平衡響應速度與準確性
+- **實時處理**：邊錄音邊分析，無需等待完整句子
+- **並行架構**：音頻捕獲與翻譯處理同時進行
+
+#### 3. 記憶體管理
+```python
+# 環形緩衝區，固定記憶體使用
+deque(maxlen=160000)  # 約10秒@16kHz
+
+# 臨時文件自動清理
+tempfile.NamedTemporaryFile(delete=False)
+os.unlink(temp_file.name)
+```
+
+### 語音斷點檢測演算法的優勢
+
+1. **低延遲**：1秒停頓即觸發，快速響應
+2. **高準確性**：RMS + 時間窗口雙重檢測
+3. **抗噪音**：智能閾值與最小長度過濾
+4. **資源效率**：環形緩衝區，控制記憶體使用
+5. **實時性**：無需預先錄製完整音頻
+
 ### 智能語音檢測
 ```python
 def detect_voice_activity(self, audio_data):
