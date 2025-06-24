@@ -1,6 +1,6 @@
 # 即時語音克隆翻譯系統 (Real-Time Voice Cloning Translation System)
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Status](https://img.shields.io/badge/Status-Active-green.svg)
 
@@ -421,7 +421,7 @@ Deep-Simultaneous-Translation/
 
 ## 📜 授權信息
 
-- **本專案**：MIT License
+- **本專案**：GNU GENERAL PUBLIC LICENSE
 - **XTTS-v2 模型**：[Coqui Public Model License](https://huggingface.co/coqui/XTTS-v2)
 - **Gemini API**：遵循 Google AI 使用條款
 
