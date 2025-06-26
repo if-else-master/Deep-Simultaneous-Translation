@@ -928,8 +928,7 @@ class RealTimeVoiceTranslationSystem:
         """GUI 版本的語音轉文字和翻譯"""
         try:
             audio_file = genai.upload_file(path=audio_file_path)
-            
-            # 構建翻譯提示詞
+
             source_lang_name = self.supported_languages[self.source_language]
             target_lang_name = self.supported_languages[self.target_language]
             
@@ -939,12 +938,10 @@ class RealTimeVoiceTranslationSystem:
                 original_text = response.text.strip()
                 translated_text = original_text
             else:
-                # 先轉錄
                 transcribe_prompt = f"請將這段音頻中的{source_lang_name}語音內容轉換為文字。只回傳轉錄的文字內容，不要包含其他說明。"
                 transcribe_response = self.model.generate_content([audio_file, transcribe_prompt])
                 original_text = transcribe_response.text.strip()
-                
-                # 再翻譯
+
                 translate_prompt = f"請將以下{source_lang_name}文字翻譯為{target_lang_name}。只回傳翻譯後的文字內容，不要包含其他說明。\n\n{original_text}"
                 translate_response = self.model.generate_content(translate_prompt)
                 translated_text = translate_response.text.strip()
