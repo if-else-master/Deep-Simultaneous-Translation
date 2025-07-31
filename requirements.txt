@@ -9,3 +9,8 @@ pygame
 cutlet
 fugashi  # 日語文本處理庫
 unidic-lite  # 日語詞典，支援 XTTS 日語語音合成
+faster-whisper 
+whisper-timestamped 
+wavmark
+g2pkk
+
