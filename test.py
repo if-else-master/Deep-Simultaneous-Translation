@@ -586,7 +586,7 @@ class VoiceTranslationSystem:
 # 使用範例
 if __name__ == "__main__":
     # 請替換為你的 Gemini API Key
-    GEMINI_API_KEY = "AIzaSyBJKGYccKXuvl0pYeGmDesqejxdb20EFqY"
+    GEMINI_API_KEY = "########################"
     
     # 初始化系統（不需要預設的參考語音，因為會用克隆的語音）
     system = VoiceTranslationSystem(gemini_api_key=GEMINI_API_KEY)
