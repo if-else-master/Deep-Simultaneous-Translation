@@ -745,7 +745,10 @@ class RealTimeVoiceTranslationSystem:
             config = XttsConfig()
             config.load_json("XTTS-v2/config.json")
             self.xtts_model = Xtts.init_from_config(config)
-            self.xtts_model.load_checkpoint(config, checkpoint_dir="XTTS-v2/", eval=True)
+            
+            # 使用 strict=False 來忽略缺少的 bias 和 masked_bias 參數
+            # 這些參數在新版本的 XTTS 中可能不需要
+            self.xtts_model.load_checkpoint(config, checkpoint_dir="XTTS-v2/", eval=True, strict=False)
             
             if torch.cuda.is_available():
                 self.xtts_model.cuda()
