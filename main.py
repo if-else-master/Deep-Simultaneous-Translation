@@ -617,7 +617,7 @@ class VoiceTranslationGUI:
 class RealTimeVoiceTranslationSystem:
     def __init__(self):
         # 系統狀態
-        self.gemini_api_key = None
+        self.gemini_api_key = None 
         self.model = None
         self.xtts_model = None
         self.config = None
