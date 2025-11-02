@@ -427,7 +427,6 @@ Deep-Simultaneous-Translation/
 
 ## 📞 聯繫方式
 
-- **Email**：[rayc57429@gmail.com]
 - **GitHub Issues**：[提交問題](https://github.com/yourusername/Deep-Simultaneous-Translation/issues)
 
 ## 🙏 致謝
